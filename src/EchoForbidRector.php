@@ -13,38 +13,38 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 final class EchoForbidRector extends AbstractRector
 {
-	public function __construct(private readonly Suppressor $suppressor)
-	{
-	}
+    public function __construct(private readonly Suppressor $suppressor)
+    {
+    }
 
-	public function getRuleDefinition(): RuleDefinition
-	{
-		return new RuleDefinition(
-			'Forbid echo',
-			[
-				new ConfiguredCodeSample(
-					'echo',
-					'forbid',
-					[],
-				),
-			],
-		);
-	}
+    public function getRuleDefinition(): RuleDefinition
+    {
+        return new RuleDefinition(
+            'Forbid echo',
+            [
+                new ConfiguredCodeSample(
+                    'echo',
+                    'forbid',
+                    [],
+                ),
+            ],
+        );
+    }
 
-	public function getNodeTypes(): array
-	{
-		return [Echo_::class];
-	}
+    public function getNodeTypes(): array
+    {
+        return [Echo_::class];
+    }
 
-	/**
-	 * @var Echo_ $node
-	 */
-	public function refactor(Node $node): ?int
-	{
-		if ($this->suppressor->isSuppressed($node, $this)) {
-			return null;
-		}
+    /**
+     * @var Echo_ $node
+     */
+    public function refactor(Node $node): ?int
+    {
+        if ($this->suppressor->isSuppressed($node, $this)) {
+            return null;
+        }
 
-		return NodeTraverser::REMOVE_NODE;
-	}
+        return NodeTraverser::REMOVE_NODE;
+    }
 }

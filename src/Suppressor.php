@@ -13,45 +13,45 @@ use ReflectionClass;
 
 final class Suppressor
 {
-	public const DOCBLOCK_NAME = 'rector-suppress';
+    public const DOCBLOCK_NAME = 'rector-suppress';
 
-	public const VALUE_SEPARATOR = ' ';
+    public const VALUE_SEPARATOR = ' ';
 
-	public function __construct(
-		private PhpDocInfoFactory $phpDocInfoFactory,
-	)
-	{
-	}
+    public function __construct(
+        private PhpDocInfoFactory $phpDocInfoFactory,
+    )
+    {
+    }
 
-	public function isSuppressed(Node $node, RectorInterface $rule): bool
-	{
-		$docBlock = $this->phpDocInfoFactory->createFromNodeOrEmpty($node);
+    public function isSuppressed(Node $node, RectorInterface $rule): bool
+    {
+        $docBlock = $this->phpDocInfoFactory->createFromNodeOrEmpty($node);
 
-		/**
-		 * @var ?PhpDocTagNode $suppressBlock
-		 */
-		$suppressBlock = $docBlock->getByName(self::DOCBLOCK_NAME);
+        /**
+         * @var ?PhpDocTagNode $suppressBlock
+         */
+        $suppressBlock = $docBlock->getByName(self::DOCBLOCK_NAME);
 
-		if (!$suppressBlock) {
-			return false;
-		}
+        if (!$suppressBlock) {
+            return false;
+        }
 
-		$docBlockValue = $suppressBlock->value;
+        $docBlockValue = $suppressBlock->value;
 
-		if (!$docBlockValue instanceof GenericTagValueNode) {
-			return false;
-		}
+        if (!$docBlockValue instanceof GenericTagValueNode) {
+            return false;
+        }
 
-		$ruleNames = $docBlockValue->value;
+        $ruleNames = $docBlockValue->value;
 
-		if (!$ruleNames) {
-			return false;
-		}
+        if (!$ruleNames) {
+            return false;
+        }
 
-		$suppressedRectorNames = explode(self::VALUE_SEPARATOR, $ruleNames);
+        $suppressedRectorNames = explode(self::VALUE_SEPARATOR, $ruleNames);
 
-		$reflect = new ReflectionClass($rule);
+        $reflect = new ReflectionClass($rule);
 
-		return in_array($reflect->getShortName(), $suppressedRectorNames, true);
-	}
+        return in_array($reflect->getShortName(), $suppressedRectorNames, true);
+    }
 }

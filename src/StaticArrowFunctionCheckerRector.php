@@ -18,61 +18,61 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 final class StaticArrowFunctionCheckerRector extends AbstractRector
 {
-	public function __construct(
-		private readonly ReflectionResolver $reflectionResolver,
-		private readonly BetterNodeFinder $betterNodeFinder,
-	)
-	{
-	}
+    public function __construct(
+        private readonly ReflectionResolver $reflectionResolver,
+        private readonly BetterNodeFinder $betterNodeFinder,
+    )
+    {
+    }
 
-	public function getRuleDefinition(): RuleDefinition
-	{
-		return new RuleDefinition('Отслеживает использование $this в статической стрелочной функции', [new CodeSample(
-			<<<'CODE_SAMPLE'
+    public function getRuleDefinition(): RuleDefinition
+    {
+        return new RuleDefinition('Отслеживает использование $this в статической стрелочной функции', [new CodeSample(
+            <<<'CODE_SAMPLE'
 static fn () => $this->method()
 CODE_SAMPLE
-			,
-			<<<'CODE_SAMPLE'
+            ,
+            <<<'CODE_SAMPLE'
 fn (): => $this->method()
 CODE_SAMPLE,
-		)]);
-	}
+        )]);
+    }
 
-	public function getNodeTypes(): array
-	{
-		return [ArrowFunction::class];
-	}
+    public function getNodeTypes(): array
+    {
+        return [ArrowFunction::class];
+    }
 
-	/**
-	 * @param ArrowFunction $node
-	 */
-	public function refactor(Node $node): ?ArrowFunction
-	{
-		if (!$node->static) {
-			return null;
-		}
+    /**
+     * @param ArrowFunction $node
+     */
+    public function refactor(Node $node): ?ArrowFunction
+    {
+        if (!$node->static) {
+            return null;
+        }
 
-		$nodes = $node instanceof Closure ? $node->stmts : [$node->expr];
+        $nodes = $node instanceof Closure ? $node->stmts : [$node->expr];
 
-		$hasThis = $this->betterNodeFinder->findFirst($nodes, function (Node $subNode): bool {
-			if (!$subNode instanceof StaticCall) {
-				return $subNode instanceof Variable && $subNode->name === 'this';
-			}
-			$methodReflection = $this->reflectionResolver->resolveMethodReflectionFromStaticCall($subNode);
+        $hasThis = $this->betterNodeFinder->findFirst($nodes, function (Node $subNode): bool {
+            if (!$subNode instanceof StaticCall) {
+                return $subNode instanceof Variable && $subNode->name === 'this';
+            }
+            $methodReflection = $this->reflectionResolver->resolveMethodReflectionFromStaticCall($subNode);
 
-			if (!$methodReflection instanceof MethodReflection) {
-				return false;
-			}
+            if (!$methodReflection instanceof MethodReflection) {
+                return false;
+            }
 
-			return !$methodReflection->isStatic();
-		});
+            return !$methodReflection->isStatic();
+        });
 
-		if ($hasThis) {
-			$node->static = false;
+        if ($hasThis) {
+            $node->static = false;
 
-			return $node;
-		}
+            return $node;
+        }
 
-		return null;
-	}
+        return null;
+    }
 }

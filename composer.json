@@ -1,58 +1,58 @@
 {
-	"name": "kaspiman/rector-rules",
-	"description": "Custom Rector rules for long-running PHP apps and more!",
-	"license": "MIT",
-	"type": "library",
-	"keywords": [
-		"php",
-		"rector",
-		"state",
-		"rule",
-		"reset"
-	],
-	"authors": [
-		{
-			"name": "Plakhotnikov Vladimir",
-			"email": "embargo2710@gmail.com"
-		}
-	],
-	"homepage": "https://github.com/Kaspiman/rector-rules",
-	"minimum-stability": "stable",
-	"prefer-stable": true,
-	"require": {
-		"php": "^8.1",
-		"rector/rector": "^1.0"
-	},
-	"require-dev": {
-		"phpmd/phpmd": "^2.15",
-		"phpstan/phpstan": "^1.11",
-		"phpstan/phpstan-deprecation-rules": "^1.2",
-		"phpunit/phpunit": "^10.5",
-		"squizlabs/php_codesniffer": "^3.10",
-		"symplify/easy-coding-standard": "^12.3",
-		"vimeo/psalm": "^5.26"
-	},
-	"suggest": {
-	},
-	"autoload": {
-		"psr-4": {
-			"Kaspiman\\RectorRules\\": "src"
-		}
-	},
-	"autoload-dev": {
-		"psr-4": {
-			"Kaspiman\\RectorRulesTest\\": "tests"
-		}
-	},
-	"scripts": {
-		"phpcs": "@php vendor/bin/phpcs",
-		"phpunit": "@php vendor/bin/phpunit",
-		"phpstan": "@php vendor/bin/phpstan",
-		"ecs": "@php vendor/bin/ecs"
-	},
-	"config": {
-		"lock": false,
-		"sort-packages": true,
-		"platform-check": true
-	}
+    "name": "kaspiman/rector-rules",
+    "description": "Custom Rector rules for long-running PHP apps and more!",
+    "license": "MIT",
+    "type": "library",
+    "keywords": [
+        "php",
+        "rector",
+        "state",
+        "rule",
+        "reset"
+    ],
+    "authors": [
+        {
+            "name": "Plakhotnikov Vladimir",
+            "email": "embargo2710@gmail.com"
+        }
+    ],
+    "homepage": "https://github.com/Kaspiman/rector-rules",
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.1",
+        "rector/rector": "^1.0"
+    },
+    "require-dev": {
+        "phpmd/phpmd": "^2.15",
+        "phpstan/phpstan": "^1.11",
+        "phpstan/phpstan-deprecation-rules": "^1.2",
+        "phpunit/phpunit": "^10.5",
+        "squizlabs/php_codesniffer": "^3.10",
+        "symplify/easy-coding-standard": "^12.3",
+        "vimeo/psalm": "^5.26"
+    },
+    "suggest": {
+    },
+    "autoload": {
+        "psr-4": {
+            "Kaspiman\\RectorRules\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kaspiman\\RectorRulesTest\\": "tests"
+        }
+    },
+    "scripts": {
+        "phpcs": "@php vendor/bin/phpcs",
+        "phpunit": "@php vendor/bin/phpunit",
+        "phpstan": "@php vendor/bin/phpstan",
+        "ecs": "@php vendor/bin/ecs"
+    },
+    "config": {
+        "lock": false,
+        "sort-packages": true,
+        "platform-check": true
+    }
 }

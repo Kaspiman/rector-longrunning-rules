@@ -13,57 +13,57 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 final class GlobalVarsForbidRector extends AbstractRector implements ConfigurableRectorInterface
 {
-	private array $vars = [];
+    private array $vars = [];
 
-	private string $forbiddenReplacement;
+    private string $forbiddenReplacement;
 
-	public function __construct(private readonly Suppressor $suppressor)
-	{
-	}
+    public function __construct(private readonly Suppressor $suppressor)
+    {
+    }
 
-	public function getRuleDefinition(): RuleDefinition
-	{
-		return new RuleDefinition(
-			'Forbid $_SESSION, $_POST and others',
-			[
-				new ConfiguredCodeSample(
-					'$_SESSION',
-					'nope',
-					[],
-				),
-			],
-		);
-	}
+    public function getRuleDefinition(): RuleDefinition
+    {
+        return new RuleDefinition(
+            'Forbid $_SESSION, $_POST and others',
+            [
+                new ConfiguredCodeSample(
+                    '$_SESSION',
+                    'nope',
+                    [],
+                ),
+            ],
+        );
+    }
 
-	public function getNodeTypes(): array
-	{
-		return [Variable::class];
-	}
+    public function getNodeTypes(): array
+    {
+        return [Variable::class];
+    }
 
-	/**
-	 * @psalm-suppress MoreSpecificImplementedParamType
-	 * @param Variable $node
-	 */
-	public function refactor(Node $node): ?Node
-	{
-		if ($this->suppressor->isSuppressed($node, $this)) {
-			return null;
-		}
+    /**
+     * @psalm-suppress MoreSpecificImplementedParamType
+     * @param Variable $node
+     */
+    public function refactor(Node $node): ?Node
+    {
+        if ($this->suppressor->isSuppressed($node, $this)) {
+            return null;
+        }
 
-		foreach ($this->vars as $var) {
-			if (!$this->isName($node, $var)) {
-				continue;
-			}
-			$node->name = $this->forbiddenReplacement;
-			return $node;
-		}
+        foreach ($this->vars as $var) {
+            if (!$this->isName($node, $var)) {
+                continue;
+            }
+            $node->name = $this->forbiddenReplacement;
+            return $node;
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	public function configure(array $configuration): void
-	{
-		$this->vars = $configuration['vars'];
-		$this->forbiddenReplacement = $configuration['forbiddenReplacement'] ?? 'forbidden';
-	}
+    public function configure(array $configuration): void
+    {
+        $this->vars = $configuration['vars'];
+        $this->forbiddenReplacement = $configuration['forbiddenReplacement'] ?? 'forbidden';
+    }
 }

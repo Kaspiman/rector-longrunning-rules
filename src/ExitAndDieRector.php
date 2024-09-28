@@ -14,42 +14,42 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 class ExitAndDieRector extends AbstractRector
 {
-	public function __construct(private readonly Suppressor $suppressor)
-	{
-	}
+    public function __construct(private readonly Suppressor $suppressor)
+    {
+    }
 
-	public function getRuleDefinition(): RuleDefinition
-	{
-		return new RuleDefinition(
-			'Forbid exit and die',
-			[
-				new ConfiguredCodeSample(
-					'exit',
-					'forbid',
-					[],
-				),
-			],
-		);
-	}
+    public function getRuleDefinition(): RuleDefinition
+    {
+        return new RuleDefinition(
+            'Forbid exit and die',
+            [
+                new ConfiguredCodeSample(
+                    'exit',
+                    'forbid',
+                    [],
+                ),
+            ],
+        );
+    }
 
-	public function getNodeTypes(): array
-	{
-		return [Expression::class];
-	}
+    public function getNodeTypes(): array
+    {
+        return [Expression::class];
+    }
 
-	public function refactor(Node $node): ?int
-	{
-		/**
-		 * @var Expression $node
-		 */
-		if (!$node->expr instanceof Exit_) {
-			return null;
-		}
+    public function refactor(Node $node): ?int
+    {
+        /**
+         * @var Expression $node
+         */
+        if (!$node->expr instanceof Exit_) {
+            return null;
+        }
 
-		if ($this->suppressor->isSuppressed($node, $this)) {
-			return null;
-		}
+        if ($this->suppressor->isSuppressed($node, $this)) {
+            return null;
+        }
 
-		return NodeTraverser::REMOVE_NODE;
-	}
+        return NodeTraverser::REMOVE_NODE;
+    }
 }
