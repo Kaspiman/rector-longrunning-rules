@@ -18,77 +18,78 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
 {
 	private array $functions = [];
 
-    public function __construct(
-        private readonly Suppressor $suppressor,
-        private readonly ValueResolver $valueResolver,
-    ) {
-    }
+	public function __construct(
+		private readonly Suppressor $suppressor,
+		private readonly ValueResolver $valueResolver,
+	)
+	{
+	}
 
-    public function getRuleDefinition(): RuleDefinition
-    {
-        return new RuleDefinition(
-            'Forbid danger functions',
-            [
-                new ConfiguredCodeSample(
-                    'setcookie',
-                    'remove that function',
-                    [],
-                ),
-            ],
-        );
-    }
+	public function getRuleDefinition(): RuleDefinition
+	{
+		return new RuleDefinition(
+			'Forbid danger functions',
+			[
+				new ConfiguredCodeSample(
+					'setcookie',
+					'remove that function',
+					[],
+				),
+			],
+		);
+	}
 
-    public function getNodeTypes(): array
-    {
-        return [FuncCall::class];
-    }
+	public function getNodeTypes(): array
+	{
+		return [FuncCall::class];
+	}
 
-    /**
-     * @param FuncCall $node
-     */
-    public function refactor(Node $node): ?Node
-    {
-        if ($this->suppressor->isSuppressed($node, $this)) {
-            return null;
-        }
+	/**
+	 * @param FuncCall $node
+	 */
+	public function refactor(Node $node): ?Node
+	{
+		if ($this->suppressor->isSuppressed($node, $this)) {
+			return null;
+		}
 
-        foreach ($this->functions as $function) {
-            if (! $this->isName($node, $function)) {
-                continue;
-            }
+		foreach ($this->functions as $function) {
+			if (!$this->isName($node, $function)) {
+				continue;
+			}
 
-            if ($this->isName($node, 'print_r')) {
-                if ($this->analyzePrintr($node)) {
-                    return null;
-                }
-            }
+			if ($this->isName($node, 'print_r')) {
+				if ($this->analyzePrintr($node)) {
+					return null;
+				}
+			}
 
-            $node->name = new Name('forbidden_function');
+			$node->name = new Name('forbidden_function');
 
-            return $node;
-        }
+			return $node;
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    /**
-     * @param FuncCall $node
-     * @return bool
-     */
-    private function analyzePrintr(Node $node): bool
-    {
-        if (count($node->args) < 2) {
-            return false;
-        }
+	/**
+	 * @param FuncCall $node
+	 * @return bool
+	 */
+	private function analyzePrintr(Node $node): bool
+	{
+		if (count($node->args) < 2) {
+			return false;
+		}
 
-        $returnArg = $node->args[1];
+		$returnArg = $node->args[1];
 
-        if (! $returnArg->value instanceof ConstFetch) {
-            return false;
-        }
+		if (!$returnArg->value instanceof ConstFetch) {
+			return false;
+		}
 
-        return $this->valueResolver->isTrue($returnArg->value);
-    }
+		return $this->valueResolver->isTrue($returnArg->value);
+	}
 
 	public function configure(array $configuration): void
 	{

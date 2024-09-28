@@ -6,8 +6,6 @@ namespace Kaspiman\RectorRules;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
-use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
@@ -33,34 +31,35 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
  */
 final class ResetStateCheckerRector extends AbstractRector implements ConfigurableRectorInterface
 {
-    private array $ignoreClassPrefixes = [];
+	private array $ignoreClassPrefixes = [];
 
-    private array $ignoreClassNames = [];
+	private array $ignoreClassNames = [];
 
-    private array $ignoreAttributes = [];
+	private array $ignoreAttributes = [];
 
-    private ?string $className;
+	private ?string $className;
 
-    private ?string $methodName;
+	private ?string $methodName;
 
-    public function __construct(
-        private readonly BetterNodeFinder $betterNodeFinder,
-        private readonly PropertyFetchAnalyzer $propertyFetchAnalyzer,
-        private readonly FamilyRelationsAnalyzer $familyRelationsAnalyzer,
-        private readonly ArrayTypeAnalyzer $arrayTypeAnalyzer,
-        private readonly ClassInsertManipulator $classInsertManipulator,
-        private readonly PhpAttributeAnalyzer $attributeAnalyzer,
-        private readonly Suppressor $suppressor,
-    ) {
-    }
+	public function __construct(
+		private readonly BetterNodeFinder $betterNodeFinder,
+		private readonly PropertyFetchAnalyzer $propertyFetchAnalyzer,
+		private readonly FamilyRelationsAnalyzer $familyRelationsAnalyzer,
+		private readonly ArrayTypeAnalyzer $arrayTypeAnalyzer,
+		private readonly ClassInsertManipulator $classInsertManipulator,
+		private readonly PhpAttributeAnalyzer $attributeAnalyzer,
+		private readonly Suppressor $suppressor,
+	)
+	{
+	}
 
-    public function getRuleDefinition(): RuleDefinition
-    {
-        return new RuleDefinition(
-            'Looking for classes with writable properties without Resettable Interface implementing.',
-            [
-                new CodeSample(
-                    <<<'CODE_SAMPLE'
+	public function getRuleDefinition(): RuleDefinition
+	{
+		return new RuleDefinition(
+			'Looking for classes with writable properties without Resettable Interface implementing.',
+			[
+				new CodeSample(
+					<<<'CODE_SAMPLE'
 final class SomeClass
 {
     private array $map = [];
@@ -76,8 +75,8 @@ final class SomeClass
     }
 }
 CODE_SAMPLE
-                    ,
-                    <<<'CODE_SAMPLE'
+					,
+					<<<'CODE_SAMPLE'
 final class SomeClass implements ResettableInterface
 {
     private array $map = [];
@@ -98,237 +97,239 @@ final class SomeClass implements ResettableInterface
     }
 }
 CODE_SAMPLE,
-                ),
-            ],
-        );
-    }
+				),
+			],
+		);
+	}
 
-    public function configure(array $configuration): void
-    {
-        $this->ignoreClassNames = $configuration['ignoreClassNames'] ?? [];
-        $this->ignoreClassPrefixes = $configuration['ignoreClassPrefixes'] ?? [];
-        $this->ignoreAttributes = $configuration['ignoreAttributes'] ?? [];
-        $this->className = $configuration['className'];
-        $this->methodName = $configuration['methodName'];
-    }
+	public function configure(array $configuration): void
+	{
+		$this->ignoreClassNames = $configuration['ignoreClassNames'] ?? [];
+		$this->ignoreClassPrefixes = $configuration['ignoreClassPrefixes'] ?? [];
+		$this->ignoreAttributes = $configuration['ignoreAttributes'] ?? [];
+		$this->className = $configuration['className'];
+		$this->methodName = $configuration['methodName'];
+	}
 
-    public function getNodeTypes(): array
-    {
-        return [Class_::class];
-    }
+	public function getNodeTypes(): array
+	{
+		return [Class_::class];
+	}
 
-    /**
-     * @param Class_ $node
-     * @return Class_|Node|null
-     */
-    public function refactor(Node $node): Node|Class_|null
-    {
-        $classLikeNames = $this->familyRelationsAnalyzer->getClassLikeAncestorNames($node) + [$node->name->name];
+	/**
+	 * @param Class_ $node
+	 * @return Class_|Node|null
+	 */
+	public function refactor(Node $node): Node|Class_|null
+	{
+		$classLikeNames = $this->familyRelationsAnalyzer->getClassLikeAncestorNames($node) + [$node->name->name];
 
-        if ($this->isIgnored($node, $classLikeNames)) {
-            return null;
-        }
+		if ($this->isIgnored($node, $classLikeNames)) {
+			return null;
+		}
 
-        $props = $this->findProperties($node);
+		$props = $this->findProperties($node);
 
-        if ($props === []) {
-            return null;
-        }
+		if ($props === []) {
+			return null;
+		}
 
-        $changedProps = $this->filterChanged($node, $props);
+		$changedProps = $this->filterChanged($node, $props);
 
-        if ($changedProps === []) {
-            return null;
-        }
+		if ($changedProps === []) {
+			return null;
+		}
 
-        if (in_array($this->className, $classLikeNames, true)) {
-            $resetMethod = $node->getMethod($this->methodName);
+		if (in_array($this->className, $classLikeNames, true)) {
+			$resetMethod = $node->getMethod($this->methodName);
 
-            if (! $resetMethod instanceof ClassMethod) {
-                $resetMethod = $this->createResetMethod($node);
-            }
+			if (!$resetMethod instanceof ClassMethod) {
+				$resetMethod = $this->createResetMethod($node);
+			}
 
-            $changedProps = $this->filterAlreadyReset($resetMethod, $changedProps);
-        } else {
-            $resetMethod = $this->createResetMethod($node);
-            $node->implements[] = new FullyQualified(ResetInterface::class);
-        }
+			$changedProps = $this->filterAlreadyReset($resetMethod, $changedProps);
+		} else {
+			$resetMethod = $this->createResetMethod($node);
+			$node->implements[] = new FullyQualified(ResetInterface::class);
+		}
 
-        if ($changedProps !== []) {
-            $this->markAsBad($resetMethod, $changedProps);
-        }
+		if ($changedProps !== []) {
+			$this->markAsBad($resetMethod, $changedProps);
+		}
 
-        return $node;
-    }
+		return $node;
+	}
 
-    private function createResetMethod(Class_ $node): ClassMethod
-    {
-        $resetMethod = $this->nodeFactory->createPublicMethod($this->methodName);
-        $this->classInsertManipulator->addAsFirstMethod($node, $resetMethod);
+	private function createResetMethod(Class_ $node): ClassMethod
+	{
+		$resetMethod = $this->nodeFactory->createPublicMethod($this->methodName);
+		$this->classInsertManipulator->addAsFirstMethod($node, $resetMethod);
 
-        return $resetMethod;
-    }
+		return $resetMethod;
+	}
 
-    private function isIgnored(Class_ $node, array $classLikeNames): bool
-    {
-        if ($node->isAnonymous()) {
-            return true;
-        }
+	private function isIgnored(Class_ $node, array $classLikeNames): bool
+	{
+		if ($node->isAnonymous()) {
+			return true;
+		}
 
-        $func = function ($string, array $check) {
-            foreach ($check as $s) {
-                $pos = str_ends_with($string, $s);
+		$func = function ($string, array $check) {
+			foreach ($check as $s) {
+				$pos = str_ends_with($string, $s);
 
-                if ($pos !== false) {
-                    return true;
-                }
-            }
+				if ($pos !== false) {
+					return true;
+				}
+			}
 
-            return false;
-        };
+			return false;
+		};
 
-        if ($func($node->name->name, $this->ignoreClassPrefixes)) {
-            return true;
-        }
+		if ($func($node->name->name, $this->ignoreClassPrefixes)) {
+			return true;
+		}
 
-        if (array_intersect($this->ignoreClassNames, $classLikeNames) !== []) {
-            return true;
-        }
+		if (array_intersect($this->ignoreClassNames, $classLikeNames) !== []) {
+			return true;
+		}
 
-        if ($this->attributeAnalyzer->hasPhpAttributes($node, $this->ignoreAttributes)) {
-            return true;
-        }
+		if ($this->attributeAnalyzer->hasPhpAttributes($node, $this->ignoreAttributes)) {
+			return true;
+		}
 
-        if ($this->suppressor->isSuppressed($node, $this)) {
-            return true;
-        }
+		if ($this->suppressor->isSuppressed($node, $this)) {
+			return true;
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    /**
-     * @param Class_ $node
-     * @return Property[]
-     */
-    private function findProperties(Class_ $node): array
-    {
-        /**
-         * @var Property[] $properties
-         */
-        $properties = [];
+	/**
+	 * @param Class_ $node
+	 * @return Property[]
+	 */
+	private function findProperties(Class_ $node): array
+	{
+		/**
+		 * @var Property[] $properties
+		 */
+		$properties = [];
 
-        foreach ($node->getProperties() as $property) {
-            if ($property->isReadonly()) {
-                continue;
-            }
+		foreach ($node->getProperties() as $property) {
+			if ($property->isReadonly()) {
+				continue;
+			}
 
-            if ($property->isPublic()) {
-                continue;
-            }
+			if ($property->isPublic()) {
+				continue;
+			}
 
-            $expr = $property->props[0]->default;
+			$expr = $property->props[0]->default;
 
-            if (! $expr) {
-                continue;
-            }
+			if (!$expr) {
+				continue;
+			}
 
-            $type = $this->getType($expr);
+			$type = $this->getType($expr);
 
-            switch (true) {
-                case $this->arrayTypeAnalyzer->isArrayType($expr):
-                    if ($expr->items !== []) {
-                        continue 2;
-                    }
-                    break;
-                case $type->isNull()->yes():
-                case $type->isScalar()->maybe():
-                    break;
-                default:
-                    continue 2;
-            }
+			switch (true) {
+				case $this->arrayTypeAnalyzer->isArrayType($expr):
+					if ($expr->items !== []) {
+						continue 2;
+					}
+					break;
+				case $type->isNull()->yes():
+				case $type->isNull()->maybe():
+				case $type->isScalar()->maybe():
+				case $type->isScalar()->yes():
+					break;
+				default:
+					continue 2;
+			}
 
-            if ($this->suppressor->isSuppressed($node, $this)) {
-                continue;
-            }
+			if ($this->suppressor->isSuppressed($node, $this)) {
+				continue;
+			}
 
-            $properties[$this->nodeNameResolver->getName($property)] = $property;
-        }
+			$properties[$this->nodeNameResolver->getName($property)] = $property;
+		}
 
-        return $properties;
-    }
+		return $properties;
+	}
 
-    /**
-     * @param Property $properties
-     * @return PropertyProperty[]
-     */
-    private function filterChanged(Class_ $node, array $properties): array
-    {
-        $changed = [];
+	/**
+	 * @param Property[] $properties
+	 * @return PropertyProperty[]
+	 */
+	private function filterChanged(Class_ $node, array $properties): array
+	{
+		$changed = [];
 
-        foreach ($node->getMethods() as $method) {
-            if ($method->name->toLowerString() === MethodName::CONSTRUCT) {
-                continue;
-            }
+		foreach ($node->getMethods() as $method) {
+			if ($method->name->toLowerString() === MethodName::CONSTRUCT) {
+				continue;
+			}
 
-            $assigns = $this->betterNodeFinder->findInstanceOf((array)$method->getStmts(), Assign::class);
+			$assigns = $this->betterNodeFinder->findInstanceOf((array)$method->getStmts(), Assign::class);
 
-            foreach ($assigns as $assign) {
-                $name = $this->nodeNameResolver->getName($assign->var);
+			foreach ($assigns as $assign) {
+				if ($assign->var instanceof Node\Expr\ArrayDimFetch) {
+					$name = $this->getName($assign->var->var);
+				} else {
+					$name = $this->getName($assign->var);
+				}
 
-                if (! $name) {
-                    continue;
-                }
+				if (!$name) {
+					continue;
+				}
 
-                if (! isset($properties[$name])) {
-                    continue;
-                }
+				if (!isset($properties[$name])) {
+					continue;
+				}
 
-                if (! ($assign->var instanceof PropertyFetch || $assign->var instanceof StaticPropertyFetch)) {
-                    continue;
-                }
+				$changed[$name] = $properties[$name]->props[0];
+			}
+		}
 
-                $changed[$name] = $properties[$name]->props[0];
-            }
-        }
+		return $changed;
+	}
 
-        return $changed;
-    }
+	/**
+	 * @param PropertyProperty[] $properties
+	 */
+	private function filterAlreadyReset(ClassMethod $resetMethod, array $properties): array
+	{
+		$forReset = [];
 
-    /**
-     * @param PropertyProperty[] $properties
-     */
-    private function filterAlreadyReset(ClassMethod $resetMethod, array $properties): array
-    {
-        $forReset = [];
+		foreach ($properties as $name => $property) {
+			$found = $this->betterNodeFinder->findFirst(
+				(array)$resetMethod->stmts,
+				function (Node $node) use ($name): bool {
+					if (!$node instanceof Assign) {
+						return false;
+					}
+					return $this->propertyFetchAnalyzer->isLocalPropertyFetchName($node->var, $name);
+				},
+			);
 
-        foreach ($properties as $name => $property) {
-            $found = $this->betterNodeFinder->findFirst(
-                (array) $resetMethod->stmts,
-                function (Node $node) use ($name): bool {
-                    if (! $node instanceof Assign) {
-                        return false;
-                    }
-                    return $this->propertyFetchAnalyzer->isLocalPropertyFetchName($node->var, $name);
-                },
-            );
+			if (!$found) {
+				$forReset[$name] = $property;
+			}
+		}
 
-            if (! $found) {
-                $forReset[$name] = $property;
-            }
-        }
+		return $forReset;
+	}
 
-        return $forReset;
-    }
-
-    /**
-     * @param PropertyProperty[] $properties
-     */
-    private function markAsBad(ClassMethod $resetMethod, array $properties): void
-    {
-        foreach ($properties as $name => $prop) {
-            $resetMethod->stmts[] = new Expression(
-                $this->nodeFactory->createPropertyAssignmentWithExpr($name, $prop->default),
-            );
-        }
-    }
+	/**
+	 * @param PropertyProperty[] $properties
+	 */
+	private function markAsBad(ClassMethod $resetMethod, array $properties): void
+	{
+		foreach ($properties as $name => $prop) {
+			$resetMethod->stmts[] = new Expression(
+				$this->nodeFactory->createPropertyAssignmentWithExpr($name, $prop->default),
+			);
+		}
+	}
 }
