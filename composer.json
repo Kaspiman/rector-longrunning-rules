@@ -1,5 +1,5 @@
 {
-    "name": "kaspiman/rector-rules",
+    "name": "kaspiman/rector-longrunning-rules",
     "description": "Custom Rector rules for long-running PHP apps and more!",
     "license": "MIT",
     "type": "library",
@@ -16,7 +16,7 @@
             "email": "embargo2710@gmail.com"
         }
     ],
-    "homepage": "https://github.com/Kaspiman/rector-rules",
+    "homepage": "https://github.com/kaspiman/rector-longrunning-rules",
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {

@@ -21,7 +21,7 @@ composer require rector/rector --dev
 Установите правила из этого репозитория:
 
 ```bash
-composer require kaspiman/rector-longrunning-rules --dev
+composer require kaspiman/rector-longrunning-rules:^1.0 --dev
 ```
 
 Добавьте и настройте правила в свой конфиг `rector.php`:
