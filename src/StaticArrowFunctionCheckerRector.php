@@ -21,21 +21,25 @@ final class StaticArrowFunctionCheckerRector extends AbstractRector
     public function __construct(
         private readonly ReflectionResolver $reflectionResolver,
         private readonly BetterNodeFinder $betterNodeFinder,
-    )
-    {
-    }
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
-        return new RuleDefinition('Отслеживает использование $this в статической стрелочной функции', [new CodeSample(
-            <<<'CODE_SAMPLE'
+        return new RuleDefinition(
+            'Отслеживает использование $this в статической стрелочной функции',
+            [
+                new CodeSample(
+                    <<<'CODE_SAMPLE'
 static fn () => $this->method()
 CODE_SAMPLE
-            ,
-            <<<'CODE_SAMPLE'
+                    ,
+                    <<<'CODE_SAMPLE'
 fn (): => $this->method()
-CODE_SAMPLE,
-        )]);
+CODE_SAMPLE
+                ),
+
+            ],
+        );
     }
 
     public function getNodeTypes(): array
@@ -48,26 +52,27 @@ CODE_SAMPLE,
      */
     public function refactor(Node $node): ?ArrowFunction
     {
-        if (!$node->static) {
+        if (! $node->static) {
             return null;
         }
 
         $nodes = $node instanceof Closure ? $node->stmts : [$node->expr];
 
         $hasThis = $this->betterNodeFinder->findFirst($nodes, function (Node $subNode): bool {
-            if (!$subNode instanceof StaticCall) {
+            if (! $subNode instanceof StaticCall) {
                 return $subNode instanceof Variable && $subNode->name === 'this';
             }
+
             $methodReflection = $this->reflectionResolver->resolveMethodReflectionFromStaticCall($subNode);
 
-            if (!$methodReflection instanceof MethodReflection) {
+            if (! $methodReflection instanceof MethodReflection) {
                 return false;
             }
 
-            return !$methodReflection->isStatic();
+            return ! $methodReflection->isStatic();
         });
 
-        if ($hasThis) {
+        if ($hasThis !== null) {
             $node->static = false;
 
             return $node;

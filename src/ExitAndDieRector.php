@@ -14,22 +14,13 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 class ExitAndDieRector extends AbstractRector
 {
-    public function __construct(private readonly Suppressor $suppressor)
-    {
-    }
+    public function __construct(
+        private readonly Suppressor $suppressor,
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
-        return new RuleDefinition(
-            'Forbid exit and die',
-            [
-                new ConfiguredCodeSample(
-                    'exit',
-                    'forbid',
-                    [],
-                ),
-            ],
-        );
+        return new RuleDefinition('Forbid exit and die', [new ConfiguredCodeSample('exit', 'forbid', [])]);
     }
 
     public function getNodeTypes(): array
@@ -42,7 +33,7 @@ class ExitAndDieRector extends AbstractRector
         /**
          * @var Expression $node
          */
-        if (!$node->expr instanceof Exit_) {
+        if (! $node->expr instanceof Exit_) {
             return null;
         }
 

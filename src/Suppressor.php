@@ -19,32 +19,28 @@ final class Suppressor
 
     public function __construct(
         private PhpDocInfoFactory $phpDocInfoFactory,
-    )
-    {
-    }
+    ) {}
 
     public function isSuppressed(Node $node, RectorInterface $rule): bool
     {
         $docBlock = $this->phpDocInfoFactory->createFromNodeOrEmpty($node);
 
-        /**
-         * @var ?PhpDocTagNode $suppressBlock
-         */
+        /** @var ?PhpDocTagNode $suppressBlock */
         $suppressBlock = $docBlock->getByName(self::DOCBLOCK_NAME);
 
-        if (!$suppressBlock) {
+        if (! $suppressBlock) {
             return false;
         }
 
         $docBlockValue = $suppressBlock->value;
 
-        if (!$docBlockValue instanceof GenericTagValueNode) {
+        if (! $docBlockValue instanceof GenericTagValueNode) {
             return false;
         }
 
         $ruleNames = $docBlockValue->value;
 
-        if (!$ruleNames) {
+        if (! $ruleNames) {
             return false;
         }
 

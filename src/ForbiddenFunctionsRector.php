@@ -18,24 +18,18 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
 {
     private array $functions = [];
 
+    private string $forbiddenReplacement;
+
     public function __construct(
         private readonly Suppressor $suppressor,
         private readonly ValueResolver $valueResolver,
-    )
-    {
-    }
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
         return new RuleDefinition(
-            'Forbid danger functions',
-            [
-                new ConfiguredCodeSample(
-                    'setcookie',
-                    'remove that function',
-                    [],
-                ),
-            ],
+            'Forbid functions',
+            [new ConfiguredCodeSample('setcookie', 'remove that function', [])],
         );
     }
 
@@ -54,17 +48,15 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
         }
 
         foreach ($this->functions as $function) {
-            if (!$this->isName($node, $function)) {
+            if (! $this->isName($node, $function)) {
                 continue;
             }
 
-            if ($this->isName($node, 'print_r')) {
-                if ($this->analyzePrintr($node)) {
-                    return null;
-                }
+            if ($this->isName($node, 'print_r') && $this->analyzePrintr($node)) {
+                return null;
             }
 
-            $node->name = new Name('forbidden_function');
+            $node->name = new Name($this->forbiddenReplacement);
 
             return $node;
         }
@@ -74,7 +66,6 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
 
     /**
      * @param FuncCall $node
-     * @return bool
      */
     private function analyzePrintr(Node $node): bool
     {
@@ -84,7 +75,7 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
 
         $returnArg = $node->args[1];
 
-        if (!$returnArg->value instanceof ConstFetch) {
+        if (! $returnArg->value instanceof ConstFetch) {
             return false;
         }
 
@@ -94,5 +85,6 @@ final class ForbiddenFunctionsRector extends AbstractRector implements Configura
     public function configure(array $configuration): void
     {
         $this->functions = $configuration['functions'];
+        $this->forbiddenReplacement = $configuration['forbiddenReplacement'] ?? 'forbiddenFunction';
     }
 }

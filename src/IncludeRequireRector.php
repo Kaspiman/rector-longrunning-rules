@@ -12,21 +12,15 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 
 final class IncludeRequireRector extends AbstractRector
 {
-    public function __construct(private readonly Suppressor $suppressor)
-    {
-    }
+    public function __construct(
+        private readonly Suppressor $suppressor,
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
         return new RuleDefinition(
             'include_once and require_once without _once',
-            [
-                new ConfiguredCodeSample(
-                    'include_once',
-                    'include',
-                    [],
-                ),
-            ],
+            [new ConfiguredCodeSample('include_once', 'include', [])],
         );
     }
 
@@ -46,7 +40,9 @@ final class IncludeRequireRector extends AbstractRector
 
         if ($node->type === Include_::TYPE_INCLUDE_ONCE) {
             return new Include_($node->expr, Include_::TYPE_INCLUDE);
-        } elseif ($node->type === Include_::TYPE_REQUIRE_ONCE) {
+        }
+
+        if ($node->type === Include_::TYPE_REQUIRE_ONCE) {
             return new Include_($node->expr, Include_::TYPE_REQUIRE);
         }
 

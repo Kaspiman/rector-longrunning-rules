@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kaspiman\RectorRules;
 
 use PhpParser\Node;
+use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt\Class_;
@@ -28,6 +29,14 @@ use Symplify\RuleDocGenerator\ValueObject\RuleDefinition;
 /**
  * @psalm-type Properties = array<string, Property>
  * @psalm-type PropertiesProperties = array<string, PropertyProperty>
+ * @rector-suppress ResettableStateCheckerRector
+ * Идея простая, хотя кода много:
+ * ищем классы, исключая DTO, консольные команды, старый код и прочее,
+ * в классах ищем поля типа скаляр или массив,
+ * ищем изменения этих полей,
+ * проверяем, что они уже сбрасываются и имеется интерфейс ResetInterface,
+ * добавляем интерфейс и сбрасываем поле в изначальное состояние в методе reset.
+ * Конец.
  */
 final class ResetStateCheckerRector extends AbstractRector implements ConfigurableRectorInterface
 {
@@ -37,9 +46,9 @@ final class ResetStateCheckerRector extends AbstractRector implements Configurab
 
     private array $ignoreAttributes = [];
 
-    private ?string $className;
+    private ?string $className = null;
 
-    private ?string $methodName;
+    private ?string $methodName = null;
 
     public function __construct(
         private readonly BetterNodeFinder $betterNodeFinder,
@@ -49,9 +58,7 @@ final class ResetStateCheckerRector extends AbstractRector implements Configurab
         private readonly ClassInsertManipulator $classInsertManipulator,
         private readonly PhpAttributeAnalyzer $attributeAnalyzer,
         private readonly Suppressor $suppressor,
-    )
-    {
-    }
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
@@ -96,7 +103,8 @@ final class SomeClass implements ResettableInterface
         $this->map = [];
     }
 }
-CODE_SAMPLE,
+CODE_SAMPLE
+                    ,
                 ),
             ],
         );
@@ -118,7 +126,6 @@ CODE_SAMPLE,
 
     /**
      * @param Class_ $node
-     * @return Class_|Node|null
      */
     public function refactor(Node $node): Node|Class_|null
     {
@@ -143,7 +150,7 @@ CODE_SAMPLE,
         if (in_array($this->className, $classLikeNames, true)) {
             $resetMethod = $node->getMethod($this->methodName);
 
-            if (!$resetMethod instanceof ClassMethod) {
+            if (! $resetMethod instanceof ClassMethod) {
                 $resetMethod = $this->createResetMethod($node);
             }
 
@@ -160,25 +167,17 @@ CODE_SAMPLE,
         return $node;
     }
 
-    private function createResetMethod(Class_ $node): ClassMethod
-    {
-        $resetMethod = $this->nodeFactory->createPublicMethod($this->methodName);
-        $this->classInsertManipulator->addAsFirstMethod($node, $resetMethod);
-
-        return $resetMethod;
-    }
-
     private function isIgnored(Class_ $node, array $classLikeNames): bool
     {
         if ($node->isAnonymous()) {
             return true;
         }
 
-        $func = function ($string, array $check) {
+        $func = function ($string, array $check): bool {
             foreach ($check as $s) {
                 $pos = str_ends_with($string, $s);
 
-                if ($pos !== false) {
+                if ($pos) {
                     return true;
                 }
             }
@@ -198,22 +197,15 @@ CODE_SAMPLE,
             return true;
         }
 
-        if ($this->suppressor->isSuppressed($node, $this)) {
-            return true;
-        }
-
-        return false;
+        return $this->suppressor->isSuppressed($node, $this);
     }
 
     /**
-     * @param Class_ $node
      * @return Property[]
      */
     private function findProperties(Class_ $node): array
     {
-        /**
-         * @var Property[] $properties
-         */
+        /** @var Property[] $properties */
         $properties = [];
 
         foreach ($node->getProperties() as $property) {
@@ -227,7 +219,7 @@ CODE_SAMPLE,
 
             $expr = $property->props[0]->default;
 
-            if (!$expr) {
+            if (! $expr) {
                 continue;
             }
 
@@ -238,6 +230,7 @@ CODE_SAMPLE,
                     if ($expr->items !== []) {
                         continue 2;
                     }
+
                     break;
                 case $type->isNull()->yes():
                 case $type->isNull()->maybe():
@@ -271,20 +264,25 @@ CODE_SAMPLE,
                 continue;
             }
 
-            $assigns = $this->betterNodeFinder->findInstanceOf((array)$method->getStmts(), Assign::class);
+            $assigns = $this->betterNodeFinder->findInstanceOf((array) $method->getStmts(), Assign::class);
 
             foreach ($assigns as $assign) {
-                if ($assign->var instanceof Node\Expr\ArrayDimFetch) {
-                    $name = $this->getName($assign->var->var);
-                } else {
-                    $name = $this->getName($assign->var);
-                }
-
-                if (!$name) {
+                $name = $assign->var instanceof ArrayDimFetch ? $this->getName($assign->var->var) : $this->getName(
+                    $assign->var,
+                );
+                if ($name === null) {
                     continue;
                 }
 
-                if (!isset($properties[$name])) {
+                if ($name === '') {
+                    continue;
+                }
+
+                if ($name === '0') {
+                    continue;
+                }
+
+                if (! isset($properties[$name])) {
                     continue;
                 }
 
@@ -293,6 +291,14 @@ CODE_SAMPLE,
         }
 
         return $changed;
+    }
+
+    private function createResetMethod(Class_ $node): ClassMethod
+    {
+        $resetMethod = $this->nodeFactory->createPublicMethod($this->methodName);
+        $this->classInsertManipulator->addAsFirstMethod($node, $resetMethod);
+
+        return $resetMethod;
     }
 
     /**
@@ -304,16 +310,17 @@ CODE_SAMPLE,
 
         foreach ($properties as $name => $property) {
             $found = $this->betterNodeFinder->findFirst(
-                (array)$resetMethod->stmts,
+                (array) $resetMethod->stmts,
                 function (Node $node) use ($name): bool {
-                    if (!$node instanceof Assign) {
+                    if (! $node instanceof Assign) {
                         return false;
                     }
+
                     return $this->propertyFetchAnalyzer->isLocalPropertyFetchName($node->var, $name);
                 },
             );
 
-            if (!$found) {
+            if ($found === null) {
                 $forReset[$name] = $property;
             }
         }

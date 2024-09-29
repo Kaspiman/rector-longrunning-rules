@@ -17,21 +17,15 @@ final class GlobalVarsForbidRector extends AbstractRector implements Configurabl
 
     private string $forbiddenReplacement;
 
-    public function __construct(private readonly Suppressor $suppressor)
-    {
-    }
+    public function __construct(
+        private readonly Suppressor $suppressor,
+    ) {}
 
     public function getRuleDefinition(): RuleDefinition
     {
         return new RuleDefinition(
             'Forbid $_SESSION, $_POST and others',
-            [
-                new ConfiguredCodeSample(
-                    '$_SESSION',
-                    'nope',
-                    [],
-                ),
-            ],
+            [new ConfiguredCodeSample('$_SESSION', 'nope', [])],
         );
     }
 
@@ -51,9 +45,10 @@ final class GlobalVarsForbidRector extends AbstractRector implements Configurabl
         }
 
         foreach ($this->vars as $var) {
-            if (!$this->isName($node, $var)) {
+            if (! $this->isName($node, $var)) {
                 continue;
             }
+
             $node->name = $this->forbiddenReplacement;
             return $node;
         }
@@ -64,6 +59,6 @@ final class GlobalVarsForbidRector extends AbstractRector implements Configurabl
     public function configure(array $configuration): void
     {
         $this->vars = $configuration['vars'];
-        $this->forbiddenReplacement = $configuration['forbiddenReplacement'] ?? 'forbidden';
+        $this->forbiddenReplacement = $configuration['forbiddenReplacement'] ?? 'forbiddenVar';
     }
 }
