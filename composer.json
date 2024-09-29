@@ -45,7 +45,6 @@
         }
     },
     "scripts": {
-        "phpcs": "@php vendor/bin/phpcs",
         "phpunit": "@php vendor/bin/phpunit",
         "phpstan": "@php vendor/bin/phpstan",
         "ecs": "@php vendor/bin/ecs"
