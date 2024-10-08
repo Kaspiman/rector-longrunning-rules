@@ -157,7 +157,7 @@ CODE_SAMPLE
             $changedProps = $this->filterAlreadyReset($resetMethod, $changedProps);
         } else {
             $resetMethod = $this->createResetMethod($node);
-            $node->implements[] = new FullyQualified(ResetInterface::class);
+            $node->implements[] = new FullyQualified($this->className);
         }
 
         if ($changedProps !== []) {
